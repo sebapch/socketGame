@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useEffect, useRef } from 'react'
+import { sharedMap, TILE_SIZE, MAP_WIDTH, MAP_HEIGHT, WALL, FLOOR, isWalkable } from './sharedMap'
 
 export default function GameMap({ width, height }) {
   const canvasRef = useRef(null)
@@ -12,112 +13,59 @@ export default function GameMap({ width, height }) {
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    // Función para generar un color aleatorio entre verde y marrón
-    const getTerrainColor = () => {
-      const r = Math.floor(Math.random() * 60) + 30
-      const g = Math.floor(Math.random() * 100) + 100
-      const b = Math.floor(Math.random() * 30)
-      return `rgb(${r},${g},${b})`
+    // Función para obtener un color de suelo aleatorio (verde o marrón)
+    const getFloorColor = () => {
+      const colors = [
+        'rgb(34, 139, 34)',  // Verde bosque
+        'rgb(160, 82, 45)',  // Siena
+      ]
+      return colors[Math.floor(Math.random() * colors.length)]
     }
 
-    // Función para generar un color de agua
-    const getWaterColor = () => {
-      const r = Math.floor(Math.random() * 20) + 30
-      const g = Math.floor(Math.random() * 20) + 100
-      const b = Math.floor(Math.random() * 55) + 200
-      return `rgb(${r},${g},${b})`
-    }
-
-    // Tamaño de cada "celda" del terreno
-    const cellSize = 10
-
-    // Generar mapa de ruido para el terreno
-    const noise = Array(Math.ceil(width / cellSize)).fill().map(() => 
-      Array(Math.ceil(height / cellSize)).fill().map(() => Math.random())
-    )
-
-    // Suavizar el ruido
-    for (let i = 0; i < 5; i++) {
-      for (let x = 0; x < noise.length; x++) {
-        for (let y = 0; y < noise[x].length; y++) {
-          let sum = 0
-          let count = 0
-          for (let dx = -1; dx <= 1; dx++) {
-            for (let dy = -1; dy <= 1; dy++) {
-              if (noise[x + dx] && noise[x + dx][y + dy] !== undefined) {
-                sum += noise[x + dx][y + dy]
-                count++
-              }
-            }
-          }
-          noise[x][y] = sum / count
-        }
-      }
-    }
-
-    // Dibujar el terreno
-    for (let x = 0; x < width; x += cellSize) {
-      for (let y = 0; y < height; y += cellSize) {
-        const noiseValue = noise[Math.floor(x / cellSize)][Math.floor(y / cellSize)]
-        if (noiseValue < 0.3) {
-          ctx.fillStyle = getWaterColor()
+    // Dibujar el mapa
+    for (let y = 0; y < sharedMap.length; y++) {
+      for (let x = 0; x < sharedMap[y].length; x++) {
+        if (sharedMap[y][x] === WALL) {
+          ctx.fillStyle = 'rgb(90, 90, 90)' // Gris para paredes
         } else {
-          ctx.fillStyle = getTerrainColor()
+          ctx.fillStyle = getFloorColor()
         }
-        ctx.fillRect(x, y, cellSize, cellSize)
+        ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE)
       }
     }
 
-    // Añadir árboles
-    const numTrees = 100
-    for (let i = 0; i < numTrees; i++) {
-      const x = Math.random() * width
-      const y = Math.random() * height
-      if (noise[Math.floor(x / cellSize)][Math.floor(y / cellSize)] >= 0.3) {
-        drawTree(ctx, x, y)
-      }
-    }
-
-    // Añadir rocas
-    const numRocks = 50
-    for (let i = 0; i < numRocks; i++) {
-      const x = Math.random() * width
-      const y = Math.random() * height
-      if (noise[Math.floor(x / cellSize)][Math.floor(y / cellSize)] >= 0.3) {
-        drawRock(ctx, x, y)
+    // Añadir detalles al suelo
+    for (let y = 0; y < sharedMap.length; y++) {
+      for (let x = 0; x < sharedMap[y].length; x++) {
+        if (sharedMap[y][x] === FLOOR) {
+          addFloorDetails(ctx, x * TILE_SIZE, y * TILE_SIZE)
+        }
       }
     }
 
   }, [width, height])
 
-  // Función para dibujar un árbol
-  function drawTree(ctx, x, y) {
-    ctx.fillStyle = 'rgb(30,80,30)'
-    ctx.beginPath()
-    ctx.moveTo(x, y)
-    ctx.lineTo(x - 10, y + 20)
-    ctx.lineTo(x + 10, y + 20)
-    ctx.closePath()
-    ctx.fill()
+  // Función para añadir detalles al suelo
+  function addFloorDetails(ctx, x, y) {
+    const detailSize = 4
+    const numDetails = 3
 
-    ctx.fillStyle = 'rgb(100,50,0)'
-    ctx.fillRect(x - 2, y + 20, 4, 10)
-  }
-
-  // Función para dibujar una roca
-  function drawRock(ctx, x, y) {
-    ctx.fillStyle = 'rgb(100,100,100)'
-    ctx.beginPath()
-    ctx.ellipse(x, y, 5, 3, 0, 0, Math.PI * 2)
-    ctx.fill()
+    for (let i = 0; i < numDetails; i++) {
+      const detailX = x + Math.random() * (TILE_SIZE - detailSize)
+      const detailY = y + Math.random() * (TILE_SIZE - detailSize)
+      ctx.fillStyle = `rgba(0, 0, 0, ${Math.random() * 0.2})`
+      ctx.fillRect(detailX, detailY, detailSize, detailSize)
+    }
   }
 
   return (
     <canvas 
       ref={canvasRef} 
-      width={width} 
-      height={height} 
+      width={MAP_WIDTH} 
+      height={MAP_HEIGHT} 
       className="border border-gray-300 rounded-lg shadow-lg"
     />
   )
 }
+
+export { isWalkable }
